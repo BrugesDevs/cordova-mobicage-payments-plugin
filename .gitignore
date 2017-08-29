@@ -1,0 +1,5 @@
+platforms/android
+platforms/ios/
+.DS_Store
+.project
+.idea

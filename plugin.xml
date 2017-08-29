@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<plugin xmlns="http://cordova.apache.org/ns/plugins/1.0"
+      id="rogerthat-payments-plugin"
+      version="0.1.0">
+    <name>Rogerthat Payments</name>
+    <description>Cordova Rogerthat Payments Plugin</description>
+    <license>Apache 2.0</license>
+    <keywords>cordova, Rogerthat</keywords>
+
+    <!-- android -->
+    <platform name="android">
+      <config-file target="res/xml/config.xml" parent="/*">
+        <feature name="RogerthatPaymentsPlugin">
+            <param name="android-package" value="com.mobicage.rogerthat.cordova.RogerthatPaymentsPlugin" />
+        </feature>
+      </config-file>
+
+      <source-file src="src/android/RogerthatPaymentsPlugin.java" target-dir="src/com/mobicage/rogerthat/cordova" />
+    </platform>
+
+    <!-- ios -->
+    <platform name="ios">
+      <config-file target="config.xml" parent="/*">
+        <feature name="RogerthatPaymentsPlugin">
+            <param name="ios-package" value="MCTRogerthatPaymentsCordovaPlugin" />
+        </feature>
+      </config-file>
+      <header-file src="src/ios/MCTRogerthatPaymentsCordovaPlugin.h" />
+      <source-file src="src/ios/MCTRogerthatPaymentsCordovaPlugin.m" />
+    </platform>
+
+    <js-module src="www/RogerthatPaymentsPlugin.js" name="RogerthatPaymentsPlugin">
+      <clobbers target="rogerthat.payments"/>
+    </js-module>
+
+    <js-module src="www/PaymentProvider.js" name="PaymentProvider">
+      <clobbers target="PaymentProvider"/>
+    </js-module>
+
+    <js-module src="www/PaymentProfile.js" name="PaymentProfile">
+      <clobbers target="PaymentProfile"/>
+    </js-module>
+
+    <js-module src="www/PaymentAsset.js" name="PaymentAsset">
+      <clobbers target="PaymentAsset"/>
+    </js-module>
+
+    <js-module src="www/PaymentTransaction.js" name="PaymentTransaction">
+      <clobbers target="PaymentTransaction"/>
+    </js-module>
+
+    <js-module src="www/PaymentPendingPayment.js" name="PaymentPendingPayment">
+      <clobbers target="PaymentPendingPayment"/>
+    </js-module>
+
+    <js-module src="www/UserDetails.js" name="UserDetails">
+      <clobbers target="UserDetails"/>
+    </js-module>
+
+    <js-module src="www/Utils.js" name="Utils">
+    </js-module>
+
+</plugin>

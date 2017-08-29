@@ -1,0 +1,23 @@
+{
+    "name": "rogerthat-payments-plugin",
+    "description": "Cordova Rogerthat Payments Plugin.",
+    "version": "0.1.0",
+    "cordova": {
+        "id": "rogerthat-payments-plugin",
+        "platforms": [
+            "android"
+        ]
+    },
+    "keywords": [
+        "cordova",
+        "Rogerthat"
+    ],
+    "engines": [
+        {
+            "name": "cordova",
+            "version": ">=5.0.0"
+        }
+    ],
+    "author": "Mobicage",
+    "license": "Apache-2.0"
+}
