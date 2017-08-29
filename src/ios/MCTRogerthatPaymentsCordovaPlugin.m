@@ -374,7 +374,7 @@ return; \
     NSString *providerId = [command.params optObjectForKey:@"provider_id"];
     NSString *assetId = [command.params optObjectForKey:@"asset_id"];
     NSString *cursor = [command.params optObjectForKey:@"cursor"];
-    NSString *type = [command.params optObjectForKey:@"type"]
+    NSString *type = [command.params optObjectForKey:@"type"];
 
     [self commandProcessed:command];
 
