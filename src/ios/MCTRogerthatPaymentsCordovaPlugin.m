@@ -239,7 +239,7 @@ return; \
             MCT_com_mobicage_to_payment_GetPendingPaymentSignatureDataResponseTO *response = [intent objectForKey:@"result"];
             if (response.success) {
                 NSDictionary *result = [response.result dictRepresentation];
-                [self commandProcessed:command withResult:OR(result, @{}) keepCallback:YES];
+                [self commandProcessed:command withResult:result keepCallback:YES];
             } else {
                 [self commandProcessed:command withError:[response.error dictRepresentation]];
             }
@@ -606,7 +606,7 @@ return; \
         }
 
         MCT_com_mobicage_to_payment_AppPaymentProviderTO *provider =
-            [MCT_com_mobicage_to_payment_AppPaymentProviderTO transferObjectWithDict:responseDict[@"payment_provider"]];
+        [MCT_com_mobicage_to_payment_AppPaymentProviderTO transferObjectWithDict:responseDict[@"payment_provider"]];
         [weakSelf.paymentPlugin updatePaymentProvider:provider];
     }];
 
@@ -701,10 +701,10 @@ return; \
 }
 
 - (void)commandProcessed:(CDVInvokedUrlCommand *)command
-         withResultString:(NSString *)result
+        withResultString:(NSString *)result
 {
     [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-                                                              messageAsString:result]
+                                                             messageAsString:result]
                                 callbackId:command.callbackId];
 }
 
