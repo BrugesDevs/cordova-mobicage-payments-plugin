@@ -28,6 +28,8 @@
 #import "MCTUIUtils.h"
 #import "MCTUtils.h"
 
+#import "GTMNSDictionary+URLArguments.h"
+
 
 #define PARAMS_REQUIRED() \
 if (command.params.count == 0) { \
@@ -65,7 +67,7 @@ return; \
 
 #pragma mark - MCTRogerthatPaymentsCordovaPlugin
 
-@interface MCTRogerthatPaymentsCordovaPlugin ()
+@interface MCTRogerthatPaymentsCordovaPlugin () <MCTOAuthControllerDelegate>
 
 @property (nonatomic, strong) MCTPaymentPlugin *paymentPlugin;
 @property (nonatomic, copy) NSString *callbackId;
@@ -124,13 +126,7 @@ return; \
 
     CDVInvokedUrlCommand *command = nil;
 
-    if ([intent.action isEqualToString:kINTENT_OAUTH_RESULT]) {
-        [[MCTComponentFramework intentFramework] unregisterIntentListener:self forIntentAction:kINTENT_OAUTH_RESULT];
-        [self loginWithOauthCode:[intent stringForKey:@"code"]
-                           state:[intent stringForKey:@"state"]];
-    }
-
-    else if ([intent.action isEqualToString:kINTENT_PAYMENT_PROVIDER_UPDATED]) {
+    if ([intent.action isEqualToString:kINTENT_PAYMENT_PROVIDER_UPDATED]) {
         MCT_com_mobicage_to_payment_AppPaymentProviderTO *provider = [intent objectForKey:@"provider"];
         [self sendCallback:@"onProviderUpdated" withArguments:[provider dictRepresentation]];
     }
@@ -285,6 +281,120 @@ return; \
     }
 }
 
+#pragma mark - MCTOAuthControllerDelegate
+
+- (void)oauthController:(MCTOauthVC *)oauthVC redirectedWithUrl:(NSURL *)url
+{
+    T_DONTCARE();
+
+    NSDictionary *queryDictionary = [NSDictionary gtm_dictionaryWithHttpArgumentsString:[url query]];
+    LOG(@"Oauth authorize result: %@", queryDictionary);
+
+    [self.viewController dismissViewControllerAnimated:NO completion:nil];
+
+    if ([queryDictionary containsKey:@"error_description"]) {
+        [self handleLoginResultWithSuccess:NO
+                                   message:queryDictionary[@"error_description"]];
+        return;
+    }
+
+    NSString *code = queryDictionary[@"code"];
+    NSString *state = OR(queryDictionary[@"state"], @"");
+
+    [self loginWithOauthCode:code state:state];
+}
+
+- (void)oauthControllerCanceled:(MCTOauthVC *)oauthVC
+{
+    T_DONTCARE();
+    [self.viewController dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark -
+
+- (void)authorizeCanceled:(id)sender
+{
+    [self.viewController dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)loginWithOauthCode:(NSString *)code
+                     state:(NSString *)state
+{
+    HERE();
+    MCTUIViewController *vc = [MCTComponentFramework menuViewController];
+    UIView *view = vc.navigationController ? vc.navigationController.view : vc.view;
+    vc.currentProgressHUD = [[MBProgressHUD alloc] initWithView:view];
+    [view addSubview:vc.currentProgressHUD];
+    vc.currentProgressHUD.labelText = MCTLocalizedString(@"Processing ...", nil);
+    vc.currentProgressHUD.mode = MBProgressHUDModeIndeterminate;
+    vc.currentProgressHUD.dimBackground = YES;
+    [vc.currentProgressHUD show:YES];
+
+    dispatch_block_t hideProgressHud = ^{
+        [vc.currentProgressHUD hide:YES];
+        [vc.currentProgressHUD removeFromSuperview];
+    };
+
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@%@", MCT_HTTPS_BASE_URL, MCT_PAYMENTS_LOGIN_URL]];
+    MCTFormDataRequest *request = [[MCTFormDataRequest alloc] initWithURL:url];
+    __weak typeof(request) weakHttpRequest = request;
+    __weak typeof(self) weakSelf = self;
+    request.shouldRedirect = YES;
+    request.queuePriority = NSOperationQueuePriorityVeryHigh;
+
+    [request addRequestHeader:@"X-MCTracker-User"
+                        value:[[[MCTComponentFramework configProvider] stringForKey:MCT_CONFIGKEY_USERNAME] MCTBase64Encode]];
+    [request addRequestHeader:@"X-MCTracker-Pass"
+                        value:[[[MCTComponentFramework configProvider] stringForKey:MCT_CONFIGKEY_PASSWORD] MCTBase64Encode]];
+
+    [request setPostValue:code forKey:@"code"];
+    [request setPostValue:state forKey:@"state"];
+    [request setPostValue:MCT_PRODUCT_ID forKey:@"app_id"];
+
+    [request setFailedBlock:^{
+        T_UI();
+        hideProgressHud();
+        [weakSelf handleLoginResultWithSuccess:NO
+                                       message:MCTLocalizedString(@"An unknown error has occurred", nil)];
+    }];
+
+    [request setCompletionBlock:^{
+        T_UI();
+        hideProgressHud();
+
+        int statusCode = weakHttpRequest.responseStatusCode;
+        NSDictionary *responseDict = [weakHttpRequest.responseString MCT_JSONValue];
+        if (statusCode != 200 || responseDict == nil) {
+            NSString *errorMessage = nil;
+            if (statusCode == 500) {
+                errorMessage = [responseDict optObjectForKey:@"error"];
+            }
+            if (errorMessage == nil) {
+                errorMessage = MCTLocalizedString(@"An unknown error has occurred", nil);
+            }
+            [weakSelf handleLoginResultWithSuccess:NO message:errorMessage];
+            return;
+        }
+
+        MCT_com_mobicage_to_payment_AppPaymentProviderTO *provider =
+        [MCT_com_mobicage_to_payment_AppPaymentProviderTO transferObjectWithDict:responseDict[@"payment_provider"]];
+        [weakSelf.paymentPlugin updatePaymentProvider:provider];
+    }];
+
+    [[MCTComponentFramework workQueue] addOperation:request];
+}
+
+- (void)handleLoginResultWithSuccess:(BOOL)success
+                             message:(NSString *)message
+{
+    if (success) {
+        [self commandProcessed:self.authorizeCallback withResultString:message];
+    } else {
+        [self commandProcessed:self.authorizeCallback withErrorString:message];
+    }
+    self.authorizeCallback = nil;
+}
+
 #pragma mark - RogerthatPaymentsPlugin interface
 
 - (void)start:(CDVInvokedUrlCommand *)command
@@ -330,10 +440,8 @@ return; \
 
     [self commandProcessed:command];
 
-    [[MCTComponentFramework intentFramework] registerIntentListener:self
-                                                    forIntentAction:kINTENT_OAUTH_RESULT
-                                                            onQueue:[MCTComponentFramework mainQueue]];
-    MCTOauthVC *vc = [MCTOauthVC viewControllerWithOauthUrl:[NSURL URLWithString:oauthAuthorizeUrl]];
+    MCTOauthVC *vc = [MCTOauthVC viewControllerWithOauthUrl:[NSURL URLWithString:oauthAuthorizeUrl]
+                                                   delegate:self];
     MCTUINavigationController *nc = [[MCTUINavigationController alloc] initWithRootViewController:vc];
     vc.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:MCTLocalizedString(@"Back", nil)
                                                                            style:UIBarButtonItemStylePlain
@@ -537,91 +645,6 @@ return; \
                                                                index:keyIndex
                                                    cryptoTransaction:cryptoTransaction];
     [self commandProcessed:command withResult:@{@"data": data}];
-}
-
-#pragma mark -
-
-- (void)authorizeCanceled:(id)sender
-{
-    [self.viewController dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (void)loginWithOauthCode:(NSString *)code
-                     state:(NSString *)state
-{
-    HERE();
-    MCTUIViewController *vc = [MCTComponentFramework menuViewController];
-    UIView *view = vc.navigationController ? vc.navigationController.view : vc.view;
-    vc.currentProgressHUD = [[MBProgressHUD alloc] initWithView:view];
-    [view addSubview:vc.currentProgressHUD];
-    vc.currentProgressHUD.labelText = MCTLocalizedString(@"Processing ...", nil);
-    vc.currentProgressHUD.mode = MBProgressHUDModeIndeterminate;
-    vc.currentProgressHUD.dimBackground = YES;
-    [vc.currentProgressHUD show:YES];
-
-    dispatch_block_t hideProgressHud = ^{
-        [vc.currentProgressHUD hide:YES];
-        [vc.currentProgressHUD removeFromSuperview];
-    };
-
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"%@%@", MCT_HTTPS_BASE_URL, MCT_PAYMENTS_LOGIN_URL]];
-    MCTFormDataRequest *request = [[MCTFormDataRequest alloc] initWithURL:url];
-    __weak typeof(request) weakHttpRequest = request;
-    __weak typeof(self) weakSelf = self;
-    request.shouldRedirect = YES;
-    request.queuePriority = NSOperationQueuePriorityVeryHigh;
-
-    [request addRequestHeader:@"X-MCTracker-User"
-                        value:[[[MCTComponentFramework configProvider] stringForKey:MCT_CONFIGKEY_USERNAME] MCTBase64Encode]];
-    [request addRequestHeader:@"X-MCTracker-Pass"
-                        value:[[[MCTComponentFramework configProvider] stringForKey:MCT_CONFIGKEY_PASSWORD] MCTBase64Encode]];
-
-    [request setPostValue:code forKey:@"code"];
-    [request setPostValue:state forKey:@"state"];
-    [request setPostValue:MCT_PRODUCT_ID forKey:@"app_id"];
-
-    [request setFailedBlock:^{
-        T_UI();
-        hideProgressHud();
-        [weakSelf handleLoginResultWithSuccess:NO
-                                       message:MCTLocalizedString(@"An unknown error has occurred", nil)];
-    }];
-
-    [request setCompletionBlock:^{
-        T_UI();
-        hideProgressHud();
-
-        int statusCode = weakHttpRequest.responseStatusCode;
-        NSDictionary *responseDict = [weakHttpRequest.responseString MCT_JSONValue];
-        if (statusCode != 200 || responseDict == nil) {
-            NSString *errorMessage = nil;
-            if (statusCode == 500) {
-                errorMessage = [responseDict optObjectForKey:@"error"];
-            }
-            if (errorMessage == nil) {
-                errorMessage = MCTLocalizedString(@"An unknown error has occurred", nil);
-            }
-            [weakSelf handleLoginResultWithSuccess:NO message:errorMessage];
-            return;
-        }
-
-        MCT_com_mobicage_to_payment_AppPaymentProviderTO *provider =
-        [MCT_com_mobicage_to_payment_AppPaymentProviderTO transferObjectWithDict:responseDict[@"payment_provider"]];
-        [weakSelf.paymentPlugin updatePaymentProvider:provider];
-    }];
-
-    [[MCTComponentFramework workQueue] addOperation:request];
-}
-
-- (void)handleLoginResultWithSuccess:(BOOL)success
-                             message:(NSString *)message
-{
-    if (success) {
-        [self commandProcessed:self.authorizeCallback withResultString:message];
-    } else {
-        [self commandProcessed:self.authorizeCallback withErrorString:message];
-    }
-    self.authorizeCallback = nil;
 }
 
 #pragma mark -
