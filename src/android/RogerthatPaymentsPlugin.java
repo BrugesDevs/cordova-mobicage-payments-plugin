@@ -936,7 +936,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
         L.i("RogerthatPaymentsPlugin.onActivityResult requestCode -> " + requestCode);
         if (requestCode == START_OAUTH_REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
-                if (data.getBooleanExtra(OauthActivity.RESULT_SUCCESS, false)) {
+                if (!TextUtils.isEmptyOrWhitespace(data.getStringExtra(OauthActivity.RESULT_CODE))) {
                     loginWithOauthCode(data.getStringExtra(OauthActivity.RESULT_CODE), data.getStringExtra(OauthActivity.RESULT_STATE));
                 } else {
                     String message = data.getStringExtra(OauthActivity.RESULT_ERROR_MESSAGE);
