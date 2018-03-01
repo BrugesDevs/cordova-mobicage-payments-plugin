@@ -56,6 +56,12 @@ RogerthatPaymentsPlugin.prototype.getPendingPaymentDetails = function (successCa
     Utils.exec(win, errorCallback, "get_pending_payment_details", [{transaction_id: transactionId}]);
 };
 
+RogerthatPaymentsPlugin.prototype.getTransactionData = function (successCallback, errorCallback, algorithm, name, index, signature_data) {
+    var args = {'key_algorithm': algorithm, 'key_name': name, 'key_index': index, 'signature_data': signature_data};
+    Utils.exec(successCallback, errorCallback, 'get_transaction_data', [args]);
+};
+
+
 var _dummy = function () {
 };
 
