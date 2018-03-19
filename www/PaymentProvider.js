@@ -35,7 +35,7 @@ PaymentProvider.prototype.profile = function (successCallback, errorCallback) {
         errorCallback("providerId was not set");
     } else {
         var win = function (result) {
-            successCallback(Utils.createProfile(new PaymentProfile(), result));
+            successCallback(Utils.copyProperties(new PaymentProfile(), result));
         };
         Utils.exec(win, errorCallback, "profile", [{"provider_id": providerId}]);
     }
@@ -49,7 +49,7 @@ PaymentProvider.prototype.assets = function (successCallback, errorCallback) {
         var win = function (result) {
             var l = [];
             for (var i = 0, len = result.length; i < len; i++) {
-                l.push(Utils.createAsset(new PaymentAsset(), result[i]));
+                l.push(Utils.copyProperties(new PaymentAsset(), result[i]));
             }
             successCallback(l);
         };
@@ -66,7 +66,7 @@ PaymentProvider.prototype.createAsset = function (successCallback, errorCallback
         provider_id: this.id
     });
     function success(result){
-        successCallback(Utils.createAsset(new PaymentAsset(), result));
+        successCallback(Utils.copyProperties(new PaymentAsset(), result));
     }
     Utils.exec(success, errorCallback, "create_asset", [payload]);
 };

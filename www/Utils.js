@@ -51,21 +51,9 @@ module.exports = {
     copyProperties : function (o, properties) {
         return _copyProperties(o, properties);
     },
-    createPaymentProvider : function(m, properties) {
-        return _copyProperties(m, properties);
-    },
-    createProfile : function(m, properties) {
-        return _copyProperties(m, properties);
-    },
-    createAsset : function(m, properties) {
-        return _copyProperties(m, properties);
-    },
     createTransaction : function(m, providerId, assetId, properties) {
         m["provider_id"] = providerId;
         m["asset_id"] = assetId;
-        return _copyProperties(m, properties);
-    },
-    createUserDetails : function(m, properties) {
         return _copyProperties(m, properties);
     }
 };

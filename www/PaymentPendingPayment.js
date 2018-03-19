@@ -1,6 +1,6 @@
 var Utils = require('./Utils');
 
-var PaymentPendingPayment = function (id, provider, assets, receiver, receiver_asset, currency, amount, memo, timestamp) {
+var PaymentPendingPayment = function (id, provider, assets, receiver, receiver_asset, currency, amount, memo, timestamp, precision) {
     this.id = id || null;
     this.provider = provider || null;
     this.assets = assets || [];
@@ -10,6 +10,7 @@ var PaymentPendingPayment = function (id, provider, assets, receiver, receiver_a
     this.amount = amount || 0;
     this.memo = memo || null;
     this.timestamp = timestamp || 0;
+    this.precision = precision || 2;
 };
 
 PaymentPendingPayment.prototype.cancel = function(successCallback, errorCallback) {

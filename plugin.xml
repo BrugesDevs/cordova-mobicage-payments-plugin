@@ -8,7 +8,6 @@
     <license>Apache 2.0</license>
     <keywords>cordova, Rogerthat</keywords>
 
-    <!-- android -->
     <platform name="android">
       <config-file target="res/xml/config.xml" parent="/*">
         <feature name="RogerthatPaymentsPlugin">
@@ -17,9 +16,9 @@
       </config-file>
 
       <source-file src="src/android/RogerthatPaymentsPlugin.java" target-dir="src/com/mobicage/rogerthat/cordova" />
+      <source-file src="src/android/PayconiqHelper.java" target-dir="src/com/mobicage/rogerthat/cordova" />
     </platform>
 
-    <!-- ios -->
     <platform name="ios">
       <config-file target="config.xml" parent="/*">
         <feature name="RogerthatPaymentsPlugin">
@@ -28,6 +27,8 @@
       </config-file>
       <header-file src="src/ios/MCTRogerthatPaymentsCordovaPlugin.h" />
       <source-file src="src/ios/MCTRogerthatPaymentsCordovaPlugin.m" />
+      <header-file src="src/ios/PayconiqHelper.h" />
+      <source-file src="src/ios/PayconiqHelper.m" />
     </platform>
 
     <js-module src="www/RogerthatPaymentsPlugin.js" name="RogerthatPaymentsPlugin">
@@ -44,6 +45,14 @@
 
     <js-module src="www/PaymentAsset.js" name="PaymentAsset">
       <clobbers target="PaymentAsset"/>
+    </js-module>
+
+    <js-module src="www/PaymentTargetInfo.js" name="PaymentTargetInfo">
+      <clobbers target="PaymentTargetInfo"/>
+    </js-module>
+
+    <js-module src="www/PaymentTargetInfoAsset.js" name="PaymentTargetInfoAsset">
+      <clobbers target="PaymentTargetInfoAsset"/>
     </js-module>
 
     <js-module src="www/PaymentTransaction.js" name="PaymentTransaction">

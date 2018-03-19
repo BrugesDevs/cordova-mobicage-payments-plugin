@@ -29,6 +29,7 @@
 #import "MCTUtils.h"
 
 #import "GTMNSDictionary+URLArguments.h"
+#import "PayconiqHelper.h"
 
 
 #define PARAMS_REQUIRED() \
@@ -114,6 +115,10 @@ return; \
                                                                       kINTENT_CONFIRM_PAYMENT_FAILED,
                                                                       kINTENT_CREATE_PAYMENT_ASSET_RESULT,
                                                                       kINTENT_CREATE_PAYMENT_ASSET_FAILED,
+                                                                      kINTENT_CREATE_TRANSACTION_RESULT,
+                                                                      kINTENT_CREATE_TRANSACTION_FAILED,
+                                                                      kINTENT_GET_TARGET_INFO_RESULT,
+                                                                      kINTENT_GET_TARGET_INFO_FAILED
                                                                       ]
                                                             onQueue:[MCTComponentFramework mainQueue]];
 }
@@ -264,6 +269,33 @@ return; \
         }
     }
 
+    else if ([intent.action isEqualToString:kINTENT_CREATE_TRANSACTION_RESULT]) {
+        if ((command = [self popCallbackWithIntent:intent]) != nil) {
+            MCT_com_mobicage_to_payment_CreateTransactionResponseTO *response = [intent objectForKey:@"result"];
+            if (response.success) {
+                self.transactionCallbacks[response.result.transaction_id] = command;
+                [self commandProcessed:command withResult:[response.result dictRepresentation] keepCallback:YES];
+            } else {
+                [self commandProcessed:command withError:[response.error dictRepresentation]];
+            }
+        }
+    }
+
+    else if ([intent.action isEqualToString:kINTENT_GET_TARGET_INFO_RESULT]) {
+        if ((command = [self popCallbackWithIntent:intent]) != nil) {
+            MCT_com_mobicage_to_payment_GetTargetInfoResponseTO *response = [intent objectForKey:@"result"];
+            if (response.success) {
+                if (response.result == nil) {
+                    [self commandProcessed:command withResult:@{}];
+                } else {
+                    [self commandProcessed:command withResult:[response.result dictRepresentation]];
+                }
+            } else {
+                [self commandProcessed:command withError:[response.error dictRepresentation]];
+            }
+        }
+    }
+
     else if ([intent.action isEqualToString:kINTENT_GET_PAYMENT_PROVIDERS_FAILED] ||
              [intent.action isEqualToString:kINTENT_GET_PAYMENT_PROFILE_FAILED] ||
              [intent.action isEqualToString:kINTENT_GET_PAYMENT_ASSETS_FAILED] ||
@@ -274,7 +306,9 @@ return; \
              [intent.action isEqualToString:kINTENT_GET_PENDING_PAYMENT_DETAILS_FAILED] ||
              [intent.action isEqualToString:kINTENT_GET_PENDING_PAYMENT_SIGNATURE_FAILED] ||
              [intent.action isEqualToString:kINTENT_CONFIRM_PAYMENT_FAILED] ||
-             [intent.action isEqualToString:kINTENT_CREATE_PAYMENT_ASSET_FAILED]) {
+             [intent.action isEqualToString:kINTENT_CREATE_PAYMENT_ASSET_FAILED] ||
+             [intent.action isEqualToString:kINTENT_CREATE_TRANSACTION_FAILED] ||
+             [intent.action isEqualToString:kINTENT_GET_TARGET_INFO_FAILED]) {
         if ((command = [self popCallbackWithIntent:intent]) != nil) {
             [self commandProcessedWithUnknownError:command];
         }
@@ -410,19 +444,48 @@ return; \
 
 }
 
-- (void)providers:(CDVInvokedUrlCommand *)command
+- (void)apps_payconiq_install:(CDVInvokedUrlCommand *)command
 {
     HERE();
-    if ([command.params boolForKey:@"all" withDefaultValue:NO]) {
-        [self commandProcessed:command];
+    BOOL installing = [PayconiqHelper installApp];
+    [self commandProcessed:command withResult:@{@"install":@(installing)}];
+}
 
-        NSString *callbackKey = [self saveCallback:command];
-        [self.paymentPlugin requestPaymentProvidersWithCallbackKey:callbackKey];
-        return;
+- (void)apps_payconiq_installed:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    BOOL testMode = [command.params boolForKey:@"test_mode" withDefaultValue:NO];
+    BOOL installed = [PayconiqHelper isInstalledWithTestMode:testMode];
+    [self commandProcessed:command withResult:@{@"installed":@(installed)}];
+}
+
+- (void)apps_payconiq_pay:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *transactionId = [command.params optObjectForKey:@"transaction_id"];
+    BOOL testMode = [command.params boolForKey:@"test_mode" withDefaultValue:NO];
+    BOOL appStarted = [PayconiqHelper startPaymentWithId:transactionId
+                                               returnUrl:[NSString stringWithFormat:@"%@://x-callback-url/payconiq",
+                                                          MCT_PRODUCT_ID]
+                                                testMode:testMode];
+    if (appStarted) {
+        [self commandProcessed:command withResult:@{}];
+    } else {
+        [self commandProcessed:command
+                 withErrorCode:@"not_installed"
+                       message:@"Payconiq app was not installed"];
     }
+}
 
-    NSArray *providers = [MCTComponentFramework.paymentPlugin.store paymentProviders];
-    [self commandProcessed:command withResultArray:[self dictArrayFromTOs:providers]];
+- (void)assets:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
+
+    NSArray *assets = [self.paymentPlugin.store paymentAssetsWithProviderId:providerId];
+    [self commandProcessed:command withResultArray:[self dictArrayFromTOs:assets]];
 }
 
 - (void)authorize:(CDVInvokedUrlCommand *)command
@@ -452,86 +515,6 @@ return; \
                                     completion:nil];
 }
 
-- (void)profile:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    PARAMS_REQUIRED();
-
-    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
-    [self commandProcessed:command];
-
-    NSString *callbackKey = [self saveCallback:command];
-    [self.paymentPlugin requestPaymentProfileWithCallbackKey:callbackKey
-                                                  providerId:providerId];
-}
-
-- (void)assets:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
-
-    NSArray *assets = [self.paymentPlugin.store paymentAssetsWithProviderId:providerId];
-    [self commandProcessed:command withResultArray:[self dictArrayFromTOs:assets]];
-}
-
-- (void)transactions:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    PARAMS_REQUIRED();
-
-    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
-    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
-    NSString *cursor = [command.params optObjectForKey:@"cursor"];
-    NSString *type = [command.params optObjectForKey:@"type"];
-
-    [self commandProcessed:command];
-
-    NSString *callbackKey = [self saveCallback:command];
-    [self.paymentPlugin requestPaymentTransactionsWithCallbackKey:callbackKey
-                                                       providerId:providerId
-                                                          assetId:assetId
-                                                           cursor:cursor
-                                                             type:type];
-}
-
-- (void)verify:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    PARAMS_REQUIRED();
-
-    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
-    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
-    NSString *code = [command.params optObjectForKey:@"code"];
-
-    [self commandProcessed:command];
-
-    NSString *callbackKey = [self saveCallback:command];
-    [self.paymentPlugin verifyPaymentAssetWithCallbackKey:callbackKey
-                                               providerId:providerId
-                                                  assetId:assetId
-                                                     code:code];
-}
-
-- (void)receive:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    PARAMS_REQUIRED();
-
-    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
-    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
-    NSString *memo = [command.params optObjectForKey:@"memo"];
-    MCTlong amount = [command.params longForKey:@"amount" withDefaultValue:0];
-
-    [self commandProcessed:command];
-
-    NSString *callbackKey = [self saveCallback:command];
-    [self.paymentPlugin receivePaymentWithCallbackKey:callbackKey
-                                           providerId:providerId
-                                              assetId:assetId
-                                               amount:amount
-                                                 memo:memo];
-}
-
 - (void)cancel_payment:(CDVInvokedUrlCommand *)command
 {
     HERE();
@@ -544,36 +527,6 @@ return; \
     NSString *callbackKey = [self saveCallback:command];
     [self.paymentPlugin cancelPaymentWithCallbackKey:callbackKey
                                        transactionId:transactionId];
-}
-
-- (void)get_pending_payment_details:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    PARAMS_REQUIRED();
-
-    NSString *transactionId = [command.params optObjectForKey:@"transaction_id"];
-
-    [self commandProcessed:command];
-
-    NSString *callbackKey = [self saveCallback:command];
-    [self.paymentPlugin requestPendingPaymentDetailsWithCallbackKey:callbackKey
-                                                      transactionId:transactionId];
-}
-
-- (void)get_pending_payment_signature_data:(CDVInvokedUrlCommand *)command
-{
-    HERE();
-    PARAMS_REQUIRED();
-
-    NSString *transactionId = [command.params optObjectForKey:@"transaction_id"];
-    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
-
-    [self commandProcessed:command];
-
-    NSString *callbackKey = [self saveCallback:command];
-    [self.paymentPlugin requestPendingPaymentSignatureDataWithCallbackKey:callbackKey
-                                                            transactionId:transactionId
-                                                                  assetId:assetId];
 }
 
 - (void)confirm_payment:(CDVInvokedUrlCommand *)command
@@ -612,13 +565,73 @@ return; \
     PARAMS_REQUIRED();
 
     MCT_com_mobicage_to_payment_CreateAssetRequestTO *request =
-    [MCT_com_mobicage_to_payment_CreateAssetRequestTO transferObjectWithDict:command.params];
+        [MCT_com_mobicage_to_payment_CreateAssetRequestTO transferObjectWithDict:command.params];
 
     [self commandProcessed:command];
 
     NSString *callbackKey = [self saveCallback:command];
     [self.paymentPlugin createAssetWithCallbackKey:callbackKey
                                            request:request];
+}
+
+- (void)create_transaction:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    MCT_com_mobicage_to_payment_CreateTransactionRequestTO *request =
+        [MCT_com_mobicage_to_payment_CreateTransactionRequestTO transferObjectWithDict:command.params];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin createTransactionWithCallbackKey:callbackKey
+                                                 request:request];
+}
+
+- (void)get_pending_payment_details:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *transactionId = [command.params optObjectForKey:@"transaction_id"];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin requestPendingPaymentDetailsWithCallbackKey:callbackKey
+                                                      transactionId:transactionId];
+}
+
+- (void)get_pending_payment_signature_data:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *transactionId = [command.params optObjectForKey:@"transaction_id"];
+    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin requestPendingPaymentSignatureDataWithCallbackKey:callbackKey
+                                                            transactionId:transactionId
+                                                                  assetId:assetId];
+}
+
+- (void)get_target_info:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    MCT_com_mobicage_to_payment_GetTargetInfoRequestTO *request =
+    [MCT_com_mobicage_to_payment_GetTargetInfoRequestTO transferObjectWithDict:command.params];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin getTargetInfoWithCallbackKey:callbackKey
+                                             request:request];
 }
 
 - (void)get_transaction_data:(CDVInvokedUrlCommand *)command
@@ -645,6 +658,92 @@ return; \
                                                                index:keyIndex
                                                    cryptoTransaction:cryptoTransaction];
     [self commandProcessed:command withResult:@{@"data": data}];
+}
+
+- (void)profile:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin requestPaymentProfileWithCallbackKey:callbackKey
+                                                  providerId:providerId];
+}
+
+- (void)providers:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    if ([command.params boolForKey:@"all" withDefaultValue:NO]) {
+        [self commandProcessed:command];
+
+        NSString *callbackKey = [self saveCallback:command];
+        [self.paymentPlugin requestPaymentProvidersWithCallbackKey:callbackKey];
+        return;
+    }
+
+    NSArray *providers = [MCTComponentFramework.paymentPlugin.store paymentProviders];
+    [self commandProcessed:command withResultArray:[self dictArrayFromTOs:providers]];
+}
+
+- (void)receive:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
+    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
+    NSString *memo = [command.params optObjectForKey:@"memo"];
+    MCTlong amount = [command.params longForKey:@"amount" withDefaultValue:0];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin receivePaymentWithCallbackKey:callbackKey
+                                           providerId:providerId
+                                              assetId:assetId
+                                               amount:amount
+                                                 memo:memo];
+}
+
+- (void)transactions:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
+    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
+    NSString *cursor = [command.params optObjectForKey:@"cursor"];
+    NSString *type = [command.params optObjectForKey:@"type"];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin requestPaymentTransactionsWithCallbackKey:callbackKey
+                                                       providerId:providerId
+                                                          assetId:assetId
+                                                           cursor:cursor
+                                                             type:type];
+}
+
+- (void)verify:(CDVInvokedUrlCommand *)command
+{
+    HERE();
+    PARAMS_REQUIRED();
+
+    NSString *providerId = [command.params optObjectForKey:@"provider_id"];
+    NSString *assetId = [command.params optObjectForKey:@"asset_id"];
+    NSString *code = [command.params optObjectForKey:@"code"];
+
+    [self commandProcessed:command];
+
+    NSString *callbackKey = [self saveCallback:command];
+    [self.paymentPlugin verifyPaymentAssetWithCallbackKey:callbackKey
+                                               providerId:providerId
+                                                  assetId:assetId
+                                                     code:code];
 }
 
 #pragma mark -
