@@ -26,7 +26,6 @@ import android.net.Uri;
 public class PayconiqHelper {
 
     private static final String SCHEME = "payconiq";
-    private static final String TEST_SCHEME = "payconiq.ext";
     private static final String PLAYSTORE_URL = "https://play.google.com/store/apps/details?id=com.payconiq.customers";
 
     public static boolean isInstalled(Activity activity, boolean testMode) {
@@ -54,8 +53,7 @@ public class PayconiqHelper {
     }
 
     private static Intent getPayconiqIntent(String transactionId, String returnUrl, boolean testMode) {
-        String scheme = testMode ? TEST_SCHEME : SCHEME;
-        Uri uri = Uri.parse(String.format("%1$s://payconiq.com/pay/1/%2$s?returnUrl=%3$s", scheme, transactionId,
+        Uri uri = Uri.parse(String.format("%1$s://payconiq.com/pay/1/%2$s?returnUrl=%3$s", SCHEME, transactionId,
                 returnUrl));
         return new Intent(Intent.ACTION_VIEW, uri);
     }
