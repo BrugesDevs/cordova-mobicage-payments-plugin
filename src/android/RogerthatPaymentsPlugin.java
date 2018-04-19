@@ -29,6 +29,7 @@ import com.mobicage.rogerth.at.R;
 import com.mobicage.rogerthat.MainService;
 import com.mobicage.rogerthat.OauthActivity;
 import com.mobicage.rogerthat.plugins.payment.PaymentPlugin;
+import com.mobicage.rogerthat.util.JsonUtils;
 import com.mobicage.rogerthat.util.TextUtils;
 import com.mobicage.rogerthat.util.http.HTTPUtil;
 import com.mobicage.rogerthat.util.logging.L;
@@ -723,7 +724,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String transactionId = TextUtils.optString(args, "transaction_id", null);
+        final String transactionId = JsonUtils.optString(args, "transaction_id", null);
         final boolean testMode = args.optBoolean("testMode", false);
         boolean appStarted = PayconiqHelper.startPayment(mActivity, transactionId, "returnUrl://", testMode);
         if (appStarted) {
@@ -738,7 +739,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
         if (args == null) {
             providerId = null;
         } else {
-            providerId = TextUtils.optString(args, "provider_id", null);
+            providerId = JsonUtils.optString(args, "provider_id", null);
         }
         List<PaymentProviderAssetTO> pas = mActivity.getPaymentPlugin().getStore().getPaymentAssets(providerId);
         JSONArray ja = new JSONArray();
@@ -754,7 +755,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             return;
         }
 
-        final String oauthAuthorizeUrl = TextUtils.optString(args, "oauth_authorize_url", null);
+        final String oauthAuthorizeUrl = JsonUtils.optString(args, "oauth_authorize_url", null);
         if (oauthAuthorizeUrl == null) {
             callbackContext.error("Authorize url not provided");
             return;
@@ -778,7 +779,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String transactionId = TextUtils.optString(args, "transaction_id", null);
+        final String transactionId = JsonUtils.optString(args, "transaction_id", null);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
@@ -793,8 +794,8 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String transactionId = TextUtils.optString(args, "transaction_id", null);
-        final String cryptoTransactionString = TextUtils.optString(args, "crypto_transaction", null);
+        final String transactionId = JsonUtils.optString(args, "transaction_id", null);
+        final String cryptoTransactionString = JsonUtils.optString(args, "crypto_transaction", null);
         CryptoTransactionTO cryptoTransaction;
         if (cryptoTransactionString == null) {
             cryptoTransaction = null;
@@ -823,12 +824,12 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             return;
         }
         CreateAssetRequestTO asset = new CreateAssetRequestTO();
-        asset.provider_id = TextUtils.optString(args, "provider_id", null);
-        asset.type = TextUtils.optString(args, "type", null);
-        asset.currency = TextUtils.optString(args, "currency", null);
-        asset.iban = TextUtils.optString(args, "iban", null);
-        asset.address = TextUtils.optString(args, "address", null);
-        asset.id = TextUtils.optString(args, "id", null);
+        asset.provider_id = JsonUtils.optString(args, "provider_id", null);
+        asset.type = JsonUtils.optString(args, "type", null);
+        asset.currency = JsonUtils.optString(args, "currency", null);
+        asset.iban = JsonUtils.optString(args, "iban", null);
+        asset.address = JsonUtils.optString(args, "address", null);
+        asset.id = JsonUtils.optString(args, "id", null);
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
@@ -843,8 +844,8 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             return;
         }
         CreateTransactionRequestTO request = new CreateTransactionRequestTO();
-        request.provider_id = TextUtils.optString(args, "provider_id", null);
-        request.params = TextUtils.optString(args, "params", null);
+        request.provider_id = JsonUtils.optString(args, "provider_id", null);
+        request.params = JsonUtils.optString(args, "params", null);
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
@@ -858,7 +859,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String transactionId = TextUtils.optString(args, "transaction_id", null);
+        final String transactionId = JsonUtils.optString(args, "transaction_id", null);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
@@ -873,8 +874,8 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String transactionId = TextUtils.optString(args, "transaction_id", null);
-        final String assetId = TextUtils.optString(args, "asset_id", null);
+        final String transactionId = JsonUtils.optString(args, "transaction_id", null);
+        final String assetId = JsonUtils.optString(args, "asset_id", null);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
@@ -890,9 +891,9 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             return;
         }
         GetTargetInfoRequestTO asset = new GetTargetInfoRequestTO();
-        asset.provider_id = TextUtils.optString(args, "provider_id", null);
-        asset.target = TextUtils.optString(args, "target", null);
-        asset.currency = TextUtils.optString(args, "currency", null);
+        asset.provider_id = JsonUtils.optString(args, "provider_id", null);
+        asset.target = JsonUtils.optString(args, "target", null);
+        asset.currency = JsonUtils.optString(args, "currency", null);
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
@@ -908,10 +909,10 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
         }
 
         try {
-            final String keyAlgorithm = TextUtils.optString(args, "key_algorithm", null);
-            final String keyName = TextUtils.optString(args, "key_name", null);
-            final Long keyIndex = TextUtils.optLong(args, "key_index");
-            final String signatureData = TextUtils.optString(args, "signature_data", null);
+            final String keyAlgorithm = JsonUtils.optString(args, "key_algorithm", null);
+            final String keyName = JsonUtils.optString(args, "key_name", null);
+            final Long keyIndex = JsonUtils.optLong(args, "key_index");
+            final String signatureData = JsonUtils.optString(args, "signature_data", null);
 
             Map<String, Object> map = (Map<String, Object>) JSONValue.parse(signatureData);
             String data = SecurityUtils.createTransactionData(mActivity.getMainService(), keyAlgorithm, keyName,
@@ -932,7 +933,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String providerId = TextUtils.optString(args, "provider_id", null);
+        final String providerId = JsonUtils.optString(args, "provider_id", null);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
@@ -968,10 +969,10 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String providerId = TextUtils.optString(args, "provider_id", null);
-        final String assetId = TextUtils.optString(args, "asset_id", null);
+        final String providerId = JsonUtils.optString(args, "provider_id", null);
+        final String assetId = JsonUtils.optString(args, "asset_id", null);
         final long amount = args.optLong("amount", 0);
-        final String memo = TextUtils.optString(args, "memo", null);
+        final String memo = JsonUtils.optString(args, "memo", null);
         final long precision = args.optLong("precision", 2);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
@@ -987,10 +988,10 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String providerId = TextUtils.optString(args, "provider_id", null);
-        final String assetId = TextUtils.optString(args, "asset_id", null);
-        final String cursor = TextUtils.optString(args, "cursor", null);
-        final String type = TextUtils.optString(args, "type", null);
+        final String providerId = JsonUtils.optString(args, "provider_id", null);
+        final String assetId = JsonUtils.optString(args, "asset_id", null);
+        final String cursor = JsonUtils.optString(args, "cursor", null);
+        final String type = JsonUtils.optString(args, "type", null);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
@@ -1005,9 +1006,9 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             returnArgsMissing(callbackContext);
             return;
         }
-        final String providerId = TextUtils.optString(args, "provider_id", null);
-        final String assetId = TextUtils.optString(args, "asset_id", null);
-        final String code = TextUtils.optString(args, "code", null);
+        final String providerId = JsonUtils.optString(args, "provider_id", null);
+        final String assetId = JsonUtils.optString(args, "asset_id", null);
+        final String code = JsonUtils.optString(args, "code", null);
 
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
