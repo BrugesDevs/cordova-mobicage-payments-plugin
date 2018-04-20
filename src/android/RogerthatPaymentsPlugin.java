@@ -725,7 +725,7 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
             return;
         }
         final String transactionId = JsonUtils.optString(args, "transaction_id", null);
-        final boolean testMode = args.optBoolean("testMode", false);
+        final boolean testMode = args.optBoolean("test_mode", false);
         boolean appStarted = PayconiqHelper.startPayment(mActivity, transactionId, "returnUrl://", testMode);
         if (appStarted) {
             callbackContext.success(new JSONObject());
