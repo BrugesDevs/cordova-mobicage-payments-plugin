@@ -695,7 +695,6 @@ public class RogerthatPaymentsPlugin extends CordovaPlugin {
 
     private void installPayconiqApp(final CallbackContext callbackContext, final JSONObject args) {
         try {
-            boolean testMode = args.optBoolean("test_mode", false);
             boolean redirectedToPlaystore = PayconiqHelper.installApp(mActivity);
             JSONObject obj = new JSONObject();
             obj.put("install", redirectedToPlaystore);
